@@ -88,4 +88,4 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 
 ## License 📄
 
-This project is licensed under the MIT License. See the `LICENSE` file for details (if one exists) or check `package.json`. 
+This project is licensed under the Apache License 2.0. See the `LICENSE` file for details. 

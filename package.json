@@ -38,6 +38,12 @@
     "ora": "^8.0.1"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.1",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
     "@types/diff": "^5.2.0",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^18.19.42",
@@ -48,6 +54,7 @@
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-import": "^2.29.1",
     "prettier": "^3.3.3",
+    "semantic-release": "^24.2.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },
@@ -66,7 +73,7 @@
     "gemini"
   ],
   "author": "Your Name <your.email@example.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/fernandobelotto/aigh/issues"
   },
