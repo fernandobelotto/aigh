@@ -18,6 +18,12 @@ const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
 const MODEL = 'gpt-4o-mini'; // Or choose another model
 
+// Helper function to clean AI generated messages
+function cleanAiMessage(message: string): string {
+  // Remove leading/trailing ``` with optional language identifier and whitespace
+  return message.replace(/^```(?:\w+)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+}
+
 // Placeholder for generating commit message
 export async function generateCommitMessage(diff: string): Promise<string> {
   if (!openai) {
@@ -45,12 +51,16 @@ Commit message:`;
       temperature: 0.7,
     });
 
-    const message = completion.choices[0]?.message?.content?.trim();
-    if (!message) {
+    const rawMessage = completion.choices[0]?.message?.content?.trim();
+    if (!rawMessage) {
       throw new Error('AI did not return a message.');
     }
-    console.log(chalk.cyan('Generated message:'), message);
-    return message;
+    
+    // Clean the message before returning
+    const cleanedMessage = cleanAiMessage(rawMessage);
+
+    console.log(chalk.cyan('Generated message (cleaned):'), cleanedMessage);
+    return cleanedMessage;
   } catch (error) {
     console.error(
       chalk.red('Error generating commit message:'),
