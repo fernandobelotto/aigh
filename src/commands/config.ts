@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { loadConfig, saveConfig, GHPConfig } from '../utils/config.js';
+import { loadConfig, saveConfig, AIGHConfig } from '../utils/config.js';
 
 // Define allowed keys explicitly to help TypeScript
 const VALID_KEYS: ReadonlyArray<string> = [
@@ -10,13 +10,13 @@ const VALID_KEYS: ReadonlyArray<string> = [
   'gemini_model',
 ];
 
-// Type guard to check if a key is a valid GHPConfig key string
-function isValidConfigKey(key: string): key is keyof GHPConfig & string {
+// Type guard to check if a key is a valid AIGHConfig key string
+function isValidConfigKey(key: string): key is keyof AIGHConfig & string {
     return VALID_KEYS.includes(key);
 }
 
 // Helper to safely get and mask config values
-function getDisplayValue(config: GHPConfig, key: keyof GHPConfig & string): string {
+function getDisplayValue(config: AIGHConfig, key: keyof AIGHConfig & string): string {
     const value = config[key];
     if (value === undefined || value === null) {
         return chalk.grey('(Not set)');
@@ -40,14 +40,14 @@ export async function handleConfigGet(key?: string) {
       process.exit(1);
     }
   } else {
-    console.log(chalk.bold('Current ghp configuration:'));
+    console.log(chalk.bold('Current aigh configuration:'));
     for (const k of VALID_KEYS) {
        // Ensure k is treated as a valid key string here
        if (isValidConfigKey(k)) {
         console.log(`  ${k}: ${getDisplayValue(config, k)}`);
        }
     }
-    console.log(chalk.dim(`\nConfig file location: ~/.ghp/config.json`));
+    console.log(chalk.dim(`\nConfig file location: ~/.aigh/config.json`));
   }
 }
 
@@ -65,7 +65,7 @@ export async function handleConfigSet(key: string, value: string) {
 
   const config = await loadConfig();
 
-  // Now that key is validated as keyof GHPConfig, assignment is safer
+  // Now that key is validated as keyof AIGHConfig, assignment is safer
   // We still need to handle potential type mismatches if not string, but for now:
   config[key] = value as any; // Use 'as any' carefully after validation, or add specific type checks
 
@@ -74,7 +74,7 @@ export async function handleConfigSet(key: string, value: string) {
     console.log(chalk.green(`Successfully set ${key} to ${value}`));
     // Provide feedback based on the key set
     if (key === 'openai_api_key' || key === 'google_api_key') {
-        console.log(chalk.yellow(`API key saved to ~/.ghp/config.json. It won't be displayed fully.`));
+        console.log(chalk.yellow(`API key saved to ~/.aigh/config.json. It won't be displayed fully.`));
     } else if (key === 'ai_provider') {
         const requiredKey = value === 'openai' ? 'openai_api_key' : 'google_api_key';
         const envVarName = value === 'openai' ? 'OPENAI_API_KEY' : 'GOOGLE_API_KEY';

@@ -1,13 +1,13 @@
-# GHP Improvement Ideas
+# AIGH Improvement Ideas
 
-This document outlines potential improvements and new features for the `ghp` project.
+This document outlines potential improvements and new features for the `aigh` project.
 
 ## 1. New Features & Functionality
 
-*   **`ghp review` Command:**
+*   **`aigh review` Command:**
     *   **Idea:** Add a command that takes a PR URL (or diff from a base branch) and uses AI to provide a preliminary code review summary.
     *   **Why:** Speed up the PR review process.
-*   **`ghp suggest` Command:**
+*   **`aigh suggest` Command:**
     *   **Idea:** Analyze staged diff and suggest code improvements or refactorings.
     *   **Why:** Act as an AI pair programmer.
 *   **More Context for AI:**
@@ -17,16 +17,16 @@ This document outlines potential improvements and new features for the `ghp` pro
     *   **Idea:** Train the AI to fill specific sections of the `.github/pull_request_template.md` based on the diff analysis.
     *   **Why:** Create more structured and complete PR descriptions.
 *   **Customizable Prompts:**
-    *   **Idea:** Allow users to override default AI prompts via a configuration file (e.g., `~/.ghp/config.json` or `.ghprc`).
+    *   **Idea:** Allow users to override default AI prompts via a configuration file (e.g., `~/.aigh/config.json` or `.aighrc`).
     *   **Why:** Give users control over AI tone, style, and format.
 *   **Support for Different AI Models/Providers:**
     *   **Idea:** Allow configuration of OpenAI models or other providers (Anthropic Claude, Google Gemini).
     *   **Why:** Provide flexibility based on user preference, cost, or quality needs.
-*   **`ghp config` Command:**
-    *   **Idea:** Add `ghp config get <key>` and `ghp config set <key> <value>` for managing settings.
+*   **`aigh config` Command:**
+    *   **Idea:** Add `aigh config get <key>` and `aigh config set <key> <value>` for managing settings.
     *   **Why:** Improve usability and discoverability of configuration.
 *   **Amend Support:**
-    *   **Idea:** Add `ghp commit --amend` flag to generate a new message for the previous commit.
+    *   **Idea:** Add `aigh commit --amend` flag to generate a new message for the previous commit.
     *   **Why:** Streamline the common `git commit --amend` workflow.
 
 ## 2. Refactoring & Code Quality

@@ -14,7 +14,7 @@ import { handleConfigGet, handleConfigSet } from './commands/config.js';
 const cli = meow(
   `
   Usage
-    $ ghp <command> [options]
+    $ aigh <command> [options]
 
   Commands
     commit           Generate AI commit message for staged changes
@@ -43,14 +43,14 @@ const cli = meow(
     gemini_model     (e.g., gemini-1.5-flash)
 
   Examples
-    $ ghp commit
-    $ ghp commit -e
-    $ ghp pr new
-    $ ghp pr new --base develop --no-draft --web -e
-    $ ghp config get
-    $ ghp config get ai_provider
-    $ ghp config set ai_provider gemini
-    $ ghp config set openai_api_key sk-...
+    $ aigh commit
+    $ aigh commit -e
+    $ aigh pr new
+    $ aigh pr new --base develop --no-draft --web -e
+    $ aigh config get
+    $ aigh config get ai_provider
+    $ aigh config set ai_provider gemini
+    $ aigh config set openai_api_key sk-...
 `,
   {
     importMeta: import.meta,
@@ -108,7 +108,7 @@ async function run(cliInput: string[], cliFlags: CliFlags) {
           await handleConfigGet(args[0]);
         } else if (subCommand === 'set') {
           if (args.length < 2) {
-            console.error(chalk.red('Usage: ghp config set <key> <value>'));
+            console.error(chalk.red('Usage: aigh config set <key> <value>'));
             cli.showHelp(1);
           } else {
             await handleConfigSet(args[0], args[1]);
