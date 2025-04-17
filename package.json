@@ -43,7 +43,7 @@
     "@types/node": "^18.19.42",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "esbuild": "^0.23.0",
+    "esbuild": "^0.25.2",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-import": "^2.29.1",
@@ -55,7 +55,16 @@
     "type": "git",
     "url": "git+https://github.com/your-username/aigh.git"
   },
-  "keywords": ["ai", "git", "github", "cli", "automation", "llm", "openai", "gemini"],
+  "keywords": [
+    "ai",
+    "git",
+    "github",
+    "cli",
+    "automation",
+    "llm",
+    "openai",
+    "gemini"
+  ],
   "author": "Your Name <your.email@example.com>",
   "license": "MIT",
   "bugs": {
