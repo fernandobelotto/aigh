@@ -12,7 +12,7 @@ async function getOpenAIClient() {
   if (!apiKey) {
     console.error(
       chalk.red(
-        'Error: OpenAI API key not found. Please set OPENAI_API_KEY environment variable or run `ghp config set openai_api_key YOUR_KEY`.',
+        'Error: OpenAI API key not found. Please set OPENAI_API_KEY environment variable or run `aigh config set openai_api_key YOUR_KEY`.',
       ),
     );
     return null;
@@ -26,7 +26,7 @@ async function getGoogleGenAIClient() {
   if (!apiKey) {
     console.error(
       chalk.red(
-        'Error: Google API key not found. Please set GOOGLE_API_KEY env var or run `ghp config set google_api_key YOUR_KEY`.',
+        'Error: Google API key not found. Please set GOOGLE_API_KEY env var or run `aigh config set google_api_key YOUR_KEY`.',
       ),
     );
     return null;

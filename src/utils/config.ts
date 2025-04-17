@@ -4,7 +4,7 @@ import path from 'path';
 import chalk from 'chalk';
 
 // Define the structure of the configuration
-export interface GHPConfig {
+export interface AIGHConfig {
   ai_provider?: 'openai' | 'gemini'; // Specify the AI provider
   openai_api_key?: string;
   openai_model?: string;
@@ -15,14 +15,14 @@ export interface GHPConfig {
 }
 
 // Default configuration values
-const DEFAULT_CONFIG: GHPConfig = {
+const DEFAULT_AIGH_CONFIG: AIGHConfig = {
   ai_provider: 'openai', // Default to OpenAI
   openai_model: 'gpt-4o-mini',
   gemini_model: 'gemini-1.5-flash', // Default Gemini model
 };
 
 // Path to the configuration file
-const CONFIG_DIR = path.join(os.homedir(), '.ghp');
+const CONFIG_DIR = path.join(os.homedir(), '.aigh');
 const CONFIG_FILE_PATH = path.join(CONFIG_DIR, 'config.json');
 
 // Ensure the configuration directory exists
@@ -45,9 +45,9 @@ async function ensureConfigDirExists(): Promise<void> {
  * Merges loaded config with defaults.
  * Handles file not existing gracefully.
  */
-export async function loadConfig(): Promise<GHPConfig> {
+export async function loadConfig(): Promise<AIGHConfig> {
   await ensureConfigDirExists();
-  let userConfig: Partial<GHPConfig> = {};
+  let userConfig: Partial<AIGHConfig> = {};
 
   try {
     const fileContent = await fs.readFile(CONFIG_FILE_PATH, 'utf-8');
@@ -56,7 +56,7 @@ export async function loadConfig(): Promise<GHPConfig> {
         // Treat empty file same as non-existent file (use defaults)
         userConfig = {};
     } else {
-        userConfig = JSON.parse(fileContent) as Partial<GHPConfig>;
+        userConfig = JSON.parse(fileContent) as Partial<AIGHConfig>;
     }
   } catch (error: unknown) {
     if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -79,7 +79,7 @@ export async function loadConfig(): Promise<GHPConfig> {
   const envGoogleApiKey = process.env.GOOGLE_API_KEY; // Check for Google key in env
 
   const finalConfig = {
-    ...DEFAULT_CONFIG,
+    ...DEFAULT_AIGH_CONFIG,
     ...userConfig,
   };
 
@@ -97,7 +97,7 @@ export async function loadConfig(): Promise<GHPConfig> {
 /**
  * Saves the provided configuration object to ~/.ghp/config.json.
  */
-export async function saveConfig(config: GHPConfig): Promise<void> {
+export async function saveConfig(config: AIGHConfig): Promise<void> {
   await ensureConfigDirExists();
   try {
     // Don't save environment variable API keys back to the file

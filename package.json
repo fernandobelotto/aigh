@@ -1,9 +1,9 @@
 {
-  "name": "ghp",
+  "name": "aigh",
   "version": "0.1.0",
-  "license": "MIT",
+  "description": "AI-powered Git and GitHub CLI assistant",
   "bin": {
-    "ghp": "dist/cli.js"
+    "aigh": "dist/cli.js"
   },
   "type": "module",
   "engines": {
@@ -43,7 +43,7 @@
     "@types/node": "^18.19.42",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.25.2",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-import": "^2.29.1",
@@ -53,10 +53,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/ghp.git"
+    "url": "git+https://github.com/your-username/aigh.git"
   },
+  "keywords": [
+    "ai",
+    "git",
+    "github",
+    "cli",
+    "automation",
+    "llm",
+    "openai",
+    "gemini"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/your-username/ghp/issues"
+    "url": "https://github.com/your-username/aigh/issues"
   },
-  "homepage": "https://github.com/your-username/ghp#readme"
+  "homepage": "https://github.com/your-username/aigh#readme"
 }

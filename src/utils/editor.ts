@@ -21,7 +21,7 @@ export async function openInEditor(initialContent: string, fileExtension = '.txt
   }
 
   const tmpDir = os.tmpdir();
-  const prefix = 'ghp-edit-';
+  const prefix = 'aigh-edit-';
   let tempFilePath: string | undefined;
 
   try {

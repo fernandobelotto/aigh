@@ -1,5 +1,5 @@
 <!--
-Thank you for contributing to ghp! ❤️
+Thank you for contributing to aigh! ❤️
 
 Please provide the following information to help us review your contribution effectively.
 -->
