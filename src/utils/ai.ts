@@ -193,7 +193,7 @@ export async function generatePrDescription(
       // Using the same API call pattern for PR description
       const resultPr = await genAIInstance.models.generateContent({ model, contents: fullPrompt });
       // Correctly extract text using candidate path
-      const rawContent = resultPr.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const rawContent = resultPr.text ?? null;
       if (!rawContent) throw new Error('Gemini did not return content.');
       const parsed = parseGeminiResponseForPr(rawContent);
       title = parsed.title;
