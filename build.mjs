@@ -14,7 +14,7 @@ const sharedConfig = {
   platform: 'node',
   format: 'esm',
   target: 'node18',
-  external: ['openai', 'dotenv', 'chalk', 'inquirer', 'execa'],
+  external: ['openai', 'dotenv', 'chalk', 'inquirer', 'execa', 'ora'],
   charset: 'utf8',
   sourcemap: isDev ? 'inline' : false,
   minify: !isDev,

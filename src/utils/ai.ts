@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import chalk from 'chalk';
+import ora from 'ora';
 
 const apiKey = process.env.OPENAI_API_KEY;
 
@@ -34,7 +35,8 @@ export async function generateCommitMessage(diff: string): Promise<string> {
     return 'feat: No changes detected'; // Default message if diff is empty
   }
 
-  console.log(chalk.blue('Generating commit message with AI...'));
+  const spinner = ora('Generating commit message with AI...').start();
+
   const prompt = `Generate a concise git commit message in the conventional commit format for the following diff:
 
 \`\`\`diff
@@ -58,12 +60,13 @@ Commit message:`;
     
     // Clean the message before returning
     const cleanedMessage = cleanAiMessage(rawMessage);
+    spinner.succeed('AI generated commit message!');
 
-    console.log(chalk.cyan('Generated message (cleaned):'), cleanedMessage);
     return cleanedMessage;
   } catch (error) {
+    spinner.fail('Failed to generate commit message.');
     console.error(
-      chalk.red('Error generating commit message:'),
+      chalk.red('Error details:'),
       error instanceof Error ? error.message : error,
     );
     // Fallback message
@@ -84,7 +87,7 @@ export async function generatePrDescription(
     };
   }
 
-  console.log(chalk.blue('Generating PR title and description with AI...'));
+  const spinner = ora('Generating PR title and description with AI...').start();
 
   const prompt = `Generate a Pull Request title and description for the following changes.
 
@@ -113,22 +116,21 @@ PR Description:
 
     // Extract title and body
     const titleMatch = rawContent.match(/^PR Title: (.*)/);
-    const title = titleMatch ? titleMatch[1].trim() : 'Generated PR';
-    const body = rawContent
-      .replace(/^PR Title: .*/, '')
-      .replace(/^PR Description:\n?/, '')
-      .trim();
-
-    console.log(chalk.cyan('Generated PR Title:'), title);
-    console.log(
-      chalk.cyan('Generated PR Body snippet:'),
-      body.substring(0, 100) + '...',
+    const title = titleMatch ? cleanAiMessage(titleMatch[1].trim()) : 'Generated PR';
+    const body = cleanAiMessage(
+      rawContent
+        .replace(/^PR Title: .*/, '')
+        .replace(/^PR Description:\n?/, '')
+        .trim()
     );
+
+    spinner.succeed('AI generated PR title and description!');
 
     return { title, body };
   } catch (error) {
+    spinner.fail('Failed to generate PR description.');
     console.error(
-      chalk.red('Error generating PR description:'),
+      chalk.red('Error details:'),
       error instanceof Error ? error.message : error,
     );
     return {

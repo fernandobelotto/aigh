@@ -16,6 +16,7 @@
     "lint:fix": "eslint src --ext ts --fix",
     "typecheck": "tsc --noEmit",
     "build": "node build.mjs",
+    "build:link": "npm run build && npm link",
     "start": "node dist/cli.js",
     "dev": "node --enable-source-maps dist/cli.js",
     "build:dev": "node build.mjs --dev",
@@ -32,7 +33,8 @@
     "execa": "^8.0.1",
     "inquirer": "^9.3.5",
     "meow": "^13.2.0",
-    "openai": "^4.52.7"
+    "openai": "^4.52.7",
+    "ora": "^8.0.1"
   },
   "devDependencies": {
     "@types/diff": "^5.2.0",
