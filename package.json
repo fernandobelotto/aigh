@@ -53,7 +53,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/aigh.git"
+    "url": "git+https://github.com/fernandobelotto/aigh.git"
   },
   "keywords": [
     "ai",
@@ -68,7 +68,7 @@
   "author": "Your Name <your.email@example.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/your-username/aigh/issues"
+    "url": "https://github.com/fernandobelotto/aigh/issues"
   },
-  "homepage": "https://github.com/your-username/aigh#readme"
+  "homepage": "https://github.com/fernandobelotto/aigh#readme"
 }
