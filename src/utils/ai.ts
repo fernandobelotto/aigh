@@ -1,76 +1,140 @@
 import OpenAI from 'openai';
 import chalk from 'chalk';
 import ora from 'ora';
+import { loadConfig } from './config.js'; // Import config loader
+import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.OPENAI_API_KEY;
+// Function to initialize OpenAI client based on config
+async function getOpenAIClient() {
+  const config = await loadConfig();
+  const apiKey = config.openai_api_key;
 
-if (!apiKey) {
-  console.error(
-    chalk.red(
-      'Error: OPENAI_API_KEY environment variable is not set. Please add it to your .env file or environment.',
-    ),
-  );
-  // Optionally exit or handle this case differently depending on requirements
-  // For now, we allow proceeding but OpenAI calls will fail.
+  if (!apiKey) {
+    console.error(
+      chalk.red(
+        'Error: OpenAI API key not found. Please set OPENAI_API_KEY environment variable or run `ghp config set openai_api_key YOUR_KEY`.',
+      ),
+    );
+    return null;
+  }
+  return new OpenAI({ apiKey });
 }
 
-// Initialize OpenAI client only if API key exists
-const openai = apiKey ? new OpenAI({ apiKey }) : null;
+async function getGoogleGenAIClient() {
+  const config = await loadConfig();
+  const apiKey = config.google_api_key;
+  if (!apiKey) {
+    console.error(
+      chalk.red(
+        'Error: Google API key not found. Please set GOOGLE_API_KEY env var or run `ghp config set google_api_key YOUR_KEY`.',
+      ),
+    );
+    return null;
+  }
 
-const MODEL = 'gpt-4o-mini'; // Or choose another model
+  const ai = new GoogleGenAI({ apiKey: apiKey });
+  return ai;
+}
 
 // Helper function to clean AI generated messages
 function cleanAiMessage(message: string): string {
+  let cleaned = message.trim();
   // Remove leading/trailing ``` with optional language identifier and whitespace
-  return message.replace(/^```(?:\w+)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+  cleaned = cleaned.replace(/^```(?:\w+)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+
+  // Attempt to find the start of the actual commit message (conventional commit format)
+  const lines = cleaned.split('\n');
+  const commitStartIndex = lines.findIndex(line => /^[a-zA-Z]+(\([^)]+\))?!?:/.test(line.trim()));
+
+  if (commitStartIndex !== -1) {
+    // If a conventional commit line is found, take it and everything after
+    cleaned = lines.slice(commitStartIndex).join('\n').trim();
+  }
+  // Return the potentially cleaner message
+  return cleaned;
+}
+
+function parseGeminiResponseForPr(responseText: string): { title: string; body: string } {
+    // Attempt to parse structured output from Gemini
+    const titleMatch = responseText.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
+    let title = titleMatch ? cleanAiMessage(titleMatch[1].trim()) : '';
+    let body = responseText;
+
+    if (titleMatch) {
+        body = body.replace(titleMatch[0], '');
+    }
+    body = cleanAiMessage(body.replace(/^\*?\*?PR Description:\*?\*?\n?/, '').trim());
+
+    // If parsing failed, use the whole response as body and generate a fallback title
+    if (!title) {
+        title = 'Generated PR Description'; // Fallback title
+        body = cleanAiMessage(responseText); // Use the full cleaned response as body
+    }
+    return { title, body };
 }
 
 // Placeholder for generating commit message
 export async function generateCommitMessage(diff: string): Promise<string> {
-  if (!openai) {
-    console.error(chalk.red('OpenAI client not initialized. Check API key.'));
-    return 'chore: OpenAI client not available';
-  }
+  const config = await loadConfig();
+  const provider = config.ai_provider || 'openai';
+
   if (!diff) {
-    return 'feat: No changes detected'; // Default message if diff is empty
+    return 'feat: No changes detected';
   }
 
-  const spinner = ora('Generating commit message with AI...').start();
-
-  const prompt = `Generate a concise git commit message in the conventional commit format for the following diff:
-
-\`\`\`diff
-${diff}
-\`\`\`
-
-Commit message:`;
+  let model: string | undefined;
+  let spinner = ora(); // Initialize spinner
 
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: MODEL,
-      max_tokens: 50,
-      temperature: 0.7,
-    });
+    let generatedMessage: string | null = null;
 
-    const rawMessage = completion.choices[0]?.message?.content?.trim();
-    if (!rawMessage) {
+    if (provider === 'openai') {
+      const openai = await getOpenAIClient();
+      if (!openai) return 'chore: OpenAI client not available';
+      model = config.openai_model || 'gpt-4o-mini';
+      spinner = ora(`Generating commit message with OpenAI (${model})...`).start();
+
+      const prompt = `Generate a concise git commit message in the conventional commit format for the following diff:\n\n\`\`\`diff\n${diff}\n\`\`\`\n\nCommit message:`;
+      const completion = await openai.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: model,
+        max_tokens: 60, // Slightly increased token limit
+        temperature: 0.7,
+      });
+      generatedMessage = completion.choices[0]?.message?.content;
+
+    } else if (provider === 'gemini') {
+      const genAIInstance = await getGoogleGenAIClient(); // Renamed variable for clarity
+      if (!genAIInstance) return 'chore: Gemini client not available';
+      model = config.gemini_model || 'gemini-1.5-flash';
+      spinner = ora(`Generating commit message with Gemini (${model})...`).start();
+
+      const prompt = `Generate a concise git commit message in the conventional commit format for the following diff:\n\n\`\`\`diff\n${diff}\n\`\`\`\n\nCommit message:`;
+      // Reverting to original working API call pattern for commit
+      const resultCommit = await genAIInstance.models.generateContent({ model, contents: prompt });
+      // Correctly extract text using candidate path
+      generatedMessage = resultCommit.text ?? null
+    } else {
+      throw new Error(`Unsupported AI provider: ${provider}`);
+    }
+
+    if (!generatedMessage) {
       throw new Error('AI did not return a message.');
     }
-    
-    // Clean the message before returning
-    const cleanedMessage = cleanAiMessage(rawMessage);
-    spinner.succeed('AI generated commit message!');
 
-    return cleanedMessage;
+    const cleanedMessage = cleanAiMessage(generatedMessage);
+
+    // Extract only the first line (the commit header)
+    const firstLine = cleanedMessage.split('\n')[0].trim();
+
+    spinner.succeed(`AI (${provider}) generated commit message!`);
+    // Return only the first line
+    return firstLine;
+
   } catch (error) {
-    spinner.fail('Failed to generate commit message.');
-    console.error(
-      chalk.red('Error details:'),
-      error instanceof Error ? error.message : error,
-    );
-    // Fallback message
-    return 'chore: Failed to generate commit message';
+    spinner.fail(`Failed to generate commit message using ${provider} (${model}).`);
+    console.error(chalk.red('Error details:'), error instanceof Error ? error.message : error);
+    return `chore: Failed to generate commit message via ${provider}`;
   }
 }
 
@@ -79,83 +143,77 @@ export async function generatePrDescription(
   diff: string,
   template?: string | null,
 ): Promise<{ title: string; body: string }> {
-  if (!openai) {
-    console.error(chalk.red('OpenAI client not initialized. Check API key.'));
-    return {
-      title: 'chore: OpenAI client not available',
-      body: 'OpenAI client not initialized. Check API key.',
-    };
-  }
+  const config = await loadConfig();
+  const provider = config.ai_provider || 'openai';
 
-  const spinner = ora('Generating PR title and description with AI...').start();
+  let model: string | undefined;
+  let spinner = ora();
 
-  const prompt = `Generate a Pull Request title and description for the following changes.
-
-${template ? `Use this PR template as a base:\n---TEMPLATE START---\n${template}\n---TEMPLATE END---\n\n` : ''}Apply the following diff to generate the content:
-\`\`\`diff
-${diff}
-\`\`\`
-
-Format the output as follows:
-PR Title: [Generated PR Title]
-PR Description:
-[Generated PR Description based on diff and template if provided]`;
+  const fallbackResult = {
+      title: `chore: Failed to generate PR title via ${provider}`,
+      body: `Failed to generate PR description via ${provider}.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``,
+  };
 
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: MODEL,
-      max_tokens: 400, // Allow more tokens for PR descriptions
-      temperature: 0.7,
-    });
+    let title: string | undefined;
+    let body: string | undefined;
 
-    const rawContent = completion.choices[0]?.message?.content?.trim();
-    if (!rawContent) {
-      throw new Error('AI did not return content.');
+    const basePrompt = `Generate a Pull Request title and description for the following changes.`;
+    const templatePrompt = template ? `Use this PR template as a base:\n---TEMPLATE START---\n${template}\n---TEMPLATE END---\n\n` : '';
+    const diffPrompt = `Apply the following diff to generate the content:\n\`\`\`diff\n${diff}\n\`\`\``;
+    const formatPrompt = `Format the output EXACTLY as follows, including the labels:\nPR Title: [Generated PR Title]\nPR Description:\n[Generated PR Description based on diff and template if provided]`;
+    const fullPrompt = `${basePrompt}\n\n${templatePrompt}${diffPrompt}\n\n${formatPrompt}`;
+
+    if (provider === 'openai') {
+      const openai = await getOpenAIClient();
+      if (!openai) return { title: 'chore: OpenAI client not available', body: 'Client init failed.' };
+      model = config.openai_model || 'gpt-4o-mini';
+      spinner = ora(`Generating PR details with OpenAI (${model})...`).start();
+
+      const completion = await openai.chat.completions.create({
+        messages: [{ role: 'user', content: fullPrompt }],
+        model: model,
+        max_tokens: 500, // Increased token limit for PRs
+        temperature: 0.7,
+      });
+      const rawContent = completion.choices[0]?.message?.content?.trim();
+      if (!rawContent) throw new Error('OpenAI did not return content.');
+      // Use the same parsing logic for OpenAI response
+      const parsed = parseGeminiResponseForPr(rawContent);
+      title = parsed.title;
+      body = parsed.body;
+
+
+    } else if (provider === 'gemini') {
+      const genAIInstance = await getGoogleGenAIClient(); // Renamed variable for clarity
+      if (!genAIInstance) return { title: 'chore: Gemini client not available', body: 'Client init failed.' };
+      model = config.gemini_model || 'gemini-1.5-flash';
+      spinner = ora(`Generating PR details with Gemini (${model})...`).start();
+
+      // Using the same API call pattern for PR description
+      const resultPr = await genAIInstance.models.generateContent({ model, contents: fullPrompt });
+      // Correctly extract text using candidate path
+      const rawContent = resultPr.text ?? null;
+      if (!rawContent) throw new Error('Gemini did not return content.');
+      const parsed = parseGeminiResponseForPr(rawContent);
+      title = parsed.title;
+      body = parsed.body;
+
+    } else {
+      throw new Error(`Unsupported AI provider: ${provider}`);
     }
 
-    // Extract title and body
-    // Updated regex to handle potential markdown bold formatting around labels
-    const titleMatch = rawContent.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
-    let title = titleMatch ? cleanAiMessage(titleMatch[1].trim()) : 'Generated PR'; // Default fallback title
-    let body = rawContent;
-
-    // Remove the matched title line from the body content
-    if (titleMatch) {
-      body = body.replace(titleMatch[0], '');
-    }
-    
-    // Remove the description label (potentially with markdown) and clean the body
-    body = cleanAiMessage(
-      body
-        .replace(/^\*?\*?PR Description:\*?\*?\n?/, '') 
-        .trim()
-    );
-
-    // If the title extraction failed initially, try to find it anywhere in the body
-    // (Handles cases where formatting might be slightly off)
-    if (title === 'Generated PR') {
-        const secondaryTitleMatch = body.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
-        if (secondaryTitleMatch) {
-            title = cleanAiMessage(secondaryTitleMatch[1].trim());
-            // Remove the title line from the body again if found this way
-            body = cleanAiMessage(body.replace(secondaryTitleMatch[0], '').trim());
-        }
+    if (!title || body === undefined) { // Check if body is explicitly undefined
+        throw new Error('Failed to parse AI response for title and body.');
     }
 
-    spinner.succeed('AI generated PR title and description!');
-
+    spinner.succeed(`AI (${provider}) generated PR title and description!`);
     return { title, body };
+
   } catch (error) {
-    spinner.fail('Failed to generate PR description.');
-    console.error(
-      chalk.red('Error details:'),
-      error instanceof Error ? error.message : error,
-    );
-    return {
-      title: 'chore: Failed to generate PR title',
-      body: `Failed to generate PR description.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``,
-    };
+    spinner.fail(`Failed to generate PR description using ${provider} (${model}).`);
+    console.error(chalk.red('Error details:'), error instanceof Error ? error.message : error);
+    return fallbackResult;
   }
 }
  
