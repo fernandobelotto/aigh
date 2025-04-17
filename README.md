@@ -15,18 +15,7 @@ Stop agonizing over the perfect commit message or PR description – let your AI
 ## Installation 📦
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/ghp.git # Replace with your repo URL
-cd aigh # Assuming you renamed the cloned directory
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Link the CLI globally (optional but recommended for ease of use)
-npm link
+npm install -g aigh
 ```
 
 Now you can run `aigh` from any directory.
