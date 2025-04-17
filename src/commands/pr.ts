@@ -4,22 +4,23 @@ import { getDiffFromBase, getCurrentBranch } from '../utils/git.js';
 import { generatePrDescription } from '../utils/ai.js';
 import { readPrTemplate } from '../utils/fs.js';
 import { createGitHubPr } from '../utils/gh.js';
+import { openInEditor } from '../utils/editor.js';
 
-// Define expected flags (if any) for type safety
+// Define expected flags, adding the editor flag
 interface PrNewFlags {
-  base?: string; // Allow specifying a base branch
-  draft?: boolean; // Override default draft status
-  web?: boolean; // Open PR in web browser after creation
+  base?: string;
+  draft?: boolean;
+  web?: boolean;
+  editor?: boolean; // Added editor flag
 }
 
 export async function handlePrNew(flags: PrNewFlags) {
   console.log(chalk.green('Starting PR creation process...'));
 
-  const baseBranch = flags.base || 'main'; // Default to 'main' if not provided
-  const createDraft = flags.draft !== undefined ? flags.draft : true; // Default to true
+  const baseBranch = flags.base || 'main';
+  const createDraft = flags.draft !== undefined ? flags.draft : true;
   const openInWeb = flags.web || false;
 
-  // 1. Get current branch
   const currentBranch = await getCurrentBranch();
   if (!currentBranch) {
     console.error(chalk.red('Could not determine current branch. Aborting.'));
@@ -32,24 +33,19 @@ export async function handlePrNew(flags: PrNewFlags) {
   console.log(chalk.blue(`Current branch: ${currentBranch}`));
   console.log(chalk.blue(`Base branch: ${baseBranch}`));
 
-  // 2. Get diff from base branch
   const diff = await getDiffFromBase(baseBranch);
   if (diff === null) {
-    // Error occurred getting diff
     console.error(chalk.red('Could not get diff from base branch. Aborting.'));
     return;
   }
   if (!diff) {
     console.log(chalk.yellow('No changes detected between current branch and base branch.'));
-    // Optional: Prompt user if they still want to create an empty PR?
     return;
   }
 
-  // 3. Read PR template
   const template = await readPrTemplate();
 
-  // 4. Generate PR title and description
-  const { title, body } = await generatePrDescription(diff, template);
+  let { title, body } = await generatePrDescription(diff, template);
 
   if (
     title === 'chore: Failed to generate PR title' ||
@@ -59,11 +55,38 @@ export async function handlePrNew(flags: PrNewFlags) {
     return;
   }
 
+  // Open in editor if the flag is set
+  if (flags.editor) {
+    try {
+      console.log(chalk.blue('Opening generated PR title & description in editor...'));
+      // Combine title and body for editing, using a standard format
+      const initialEditorContent = `${title}\n\n${body}`;
+      const editedContent = await openInEditor(initialEditorContent, '.md'); // Use .md extension
+      
+      // Parse the edited content back into title and body
+      const lines = editedContent.split('\n');
+      const editedTitle = lines[0].trim();
+      const editedBody = lines.slice(1).join('\n').trim(); // Handle potential blank line after title
+
+      if (!editedTitle) {
+        console.error(chalk.red('Edited title is empty. Aborting PR creation.'));
+        return;
+      }
+      // Allow empty body, but use the edited versions
+      title = editedTitle;
+      body = editedBody;
+      console.log(chalk.green('Editor closed. Using edited title and description.'));
+    } catch (error) {
+      console.error(chalk.red('Failed to edit PR content:'), error);
+      return; // Abort if editor fails
+    }
+  }
+
   console.log('\n------------------------------------');
-  console.log(chalk.bold('Generated PR Title:'));
+  console.log(chalk.bold('PR Title:')); // Changed label for clarity
   console.log(chalk.yellow(title));
-  console.log('\n' + chalk.bold('Generated PR Description:'));
-  console.log(chalk.dim(body)); // Use dim for potentially long body
+  console.log('\n' + chalk.bold('PR Description:')); // Changed label for clarity
+  console.log(chalk.dim(body));
   console.log('------------------------------------\n');
 
   const { confirmPr } = await inquirer.prompt([
@@ -80,7 +103,6 @@ export async function handlePrNew(flags: PrNewFlags) {
     return;
   }
 
-  // 5. Execute gh pr create
   const prSuccess = await createGitHubPr({
     title,
     body,

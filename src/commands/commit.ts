@@ -2,9 +2,15 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { getStagedDiff, commitChanges } from '../utils/git.js';
 import { generateCommitMessage } from '../utils/ai.js';
+import { openInEditor } from '../utils/editor.js';
+
+// Define flags expected by handleCommit
+interface CommitFlags {
+  editor?: boolean;
+}
 
 // Placeholder function for commit command logic
-export async function handleCommit(_flags: Record<string, any>) {
+export async function handleCommit(flags: CommitFlags) {
   console.log(chalk.green('Starting commit process...'));
 
   // 1. Get staged diff
@@ -21,7 +27,7 @@ export async function handleCommit(_flags: Record<string, any>) {
   }
 
   // 2. Generate commit message
-  const commitMessage = await generateCommitMessage(diff);
+  let commitMessage = await generateCommitMessage(diff);
 
   if (
     !commitMessage ||
@@ -32,8 +38,26 @@ export async function handleCommit(_flags: Record<string, any>) {
     return;
   }
 
+  // Open in editor if the flag is set
+  if (flags.editor) {
+    try {
+      console.log(chalk.blue('Opening generated message in editor...'));
+      const editedMessage = await openInEditor(commitMessage, '.gitcommit');
+      // Basic validation: check if the user deleted everything
+      if (!editedMessage.trim()) {
+        console.error(chalk.red('Edited message is empty. Aborting commit.'));
+        return;
+      }
+      commitMessage = editedMessage.trim(); // Use the edited message
+      console.log(chalk.green('Editor closed. Using edited message.'));
+    } catch (error) {
+      console.error(chalk.red('Failed to edit commit message:'), error);
+      return; // Abort if editor fails
+    }
+  }
+
   console.log('\n------------------------------------');
-  console.log(chalk.bold('Generated Commit Message:'));
+  console.log(chalk.bold('Commit Message:'));
   console.log(chalk.yellow(commitMessage));
   console.log('------------------------------------\n');
 

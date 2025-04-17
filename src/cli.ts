@@ -22,14 +22,22 @@ const cli = meow(
   Options
     --help, -h       Show help
     --version, -v    Show version
+
+  Commit Options:
+    -e, --editor     Open generated message in editor before committing
+
+  PR New Options:
     --base <branch>  Specify base branch for 'pr new' (default: main)
     --no-draft       Create the PR as ready for review instead of draft
     --web            Open the created PR in the web browser
+    -e, --editor     Open generated title & body in editor before creating
 
   Examples
     $ ghp commit
+    $ ghp commit -e
     $ ghp pr new
     $ ghp pr new --base develop --no-draft --web
+    $ ghp pr new -e
 `,
   {
     importMeta: import.meta,
@@ -47,6 +55,11 @@ const cli = meow(
         type: 'boolean',
         default: false,
       },
+      editor: {
+        type: 'boolean',
+        shortFlag: 'e',
+        default: false,
+      },
     },
   },
 );
@@ -56,6 +69,7 @@ interface CliFlags {
   base?: string;
   draft?: boolean;
   web?: boolean;
+  editor?: boolean;
   [key: string]: unknown; // Allow other unknown flags potentially
 }
 
@@ -71,7 +85,7 @@ async function run(cliInput: string[], cliFlags: CliFlags) {
     switch (command) {
       case 'commit':
         // Pass relevant flags if commit command needs them later
-        await handleCommit({}); 
+        await handleCommit({ editor: cliFlags.editor });
         break;
 
       case 'pr':
@@ -81,6 +95,7 @@ async function run(cliInput: string[], cliFlags: CliFlags) {
             base: cliFlags.base,
             draft: cliFlags.draft,
             web: cliFlags.web,
+            editor: cliFlags.editor,
           });
         } else {
           console.error(chalk.red(`Unknown pr subcommand: ${cliInput[1]}`));
