@@ -28,7 +28,8 @@ export async function createGitHubPr(options: PrOptions): Promise<boolean> {
     args.push('--base', baseBranch);
   }
 
-  if (draft) {
+  // Only add --draft if --web is not being used
+  if (draft && !web) {
     args.push('--draft');
   }
 
