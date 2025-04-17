@@ -1,0 +1,1337 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+.github/
+  pull_request_template.md
+src/
+  commands/
+    commit.ts
+    pr.ts
+  utils/
+    ai.ts
+    editor.ts
+    fs.ts
+    gh.ts
+    git.ts
+  cli.ts
+.eslintrc.cjs
+.gitignore
+.prettierrc.json
+build.mjs
+package.json
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".github/pull_request_template.md">
+<!--
+Thank you for contributing to ghp! ❤️
+
+Please provide the following information to help us review your contribution effectively.
+-->
+
+## Description
+
+<!-- 
+Provide a clear and concise description of the changes in this pull request.
+What problem does it solve? What is the main goal?
+-->
+
+
+
+## Related Issue(s)
+
+<!-- 
+Link to any relevant issues using keywords like `Fixes #123` or `Resolves #123`.
+If this PR addresses multiple issues, list them here.
+If there are no related issues, state that clearly.
+-->
+
+- Fixes # (issue number)
+
+## Type of Change
+
+<!-- 
+Please check the options that apply. Use [x] to select.
+-->
+
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Refactoring (no functional changes, just code cleanup)
+- [ ] Documentation update
+- [ ] Build or CI/CD related changes
+- [ ] Other (please describe):
+
+## How Has This Been Tested?
+
+<!--
+Please describe the tests that you ran to verify your changes.
+Provide instructions so we can reproduce the testing.
+Include details of your testing environment if relevant.
+-->
+
+- [ ] Manual testing (describe steps)
+- [ ] Unit tests (if applicable)
+- [ ] Integration tests (if applicable)
+
+**Test Configuration:**
+*   OS: <!-- e.g., macOS Sonoma -->
+*   Node.js Version: <!-- e.g., v20.13.1 -->
+*   `gh` CLI Version: <!-- e.g., gh version 2.49.0 -->
+
+## Checklist:
+
+<!-- 
+Go over all the following points, and put an `x` in all the boxes that apply.
+If you're unsure about any of these, don't hesitate to ask. We're here to help!
+-->
+
+- [ ] I have read the **CONTRIBUTING** document (if one exists).
+- [ ] My code follows the style guidelines of this project.
+- [ ] I have performed a self-review of my own code.
+- [ ] I have commented my code, particularly in hard-to-understand areas.
+- [ ] I have made corresponding changes to the documentation (e.g., README.md).
+- [ ] My changes generate no new warnings or errors (e.g., from `npm run lint` or `npm run typecheck`).
+- [ ] I have added tests that prove my fix is effective or that my feature works (if applicable).
+- [ ] New and existing unit tests pass locally with my changes (if applicable).
+- [ ] Any dependent changes have been merged and published in downstream modules (if applicable).
+
+## Screenshots or Screencasts (if applicable)
+
+<!-- 
+If your change affects the UI or command-line output, please provide screenshots or a short video/GIF.
+This helps reviewers understand the changes visually.
+-->
+
+
+
+## Additional Context
+
+<!-- 
+Add any other context about the pull request here.
+Why was this approach chosen? Were there alternatives considered?
+-->
+</file>
+
+<file path="src/utils/editor.ts">
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { execa } from 'execa';
+import chalk from 'chalk';
+
+/**
+ * Opens the provided content in the user's default editor.
+ * Waits for the editor to close and returns the edited content.
+ *
+ * @param initialContent The initial content to populate the editor with.
+ * @param fileExtension Optional file extension for the temporary file (e.g., '.md').
+ * @returns The content of the file after editing.
+ */
+export async function openInEditor(initialContent: string, fileExtension = '.txt'): Promise<string> {
+  const editor = process.env.VISUAL || process.env.EDITOR;
+  if (!editor) {
+    throw new Error(
+      'Neither VISUAL nor EDITOR environment variables are set. Please configure your default editor.',
+    );
+  }
+
+  const tmpDir = os.tmpdir();
+  const prefix = 'ghp-edit-';
+  let tempFilePath: string | undefined;
+
+  try {
+    // Create a unique temporary directory
+    const tempDir = await fs.mkdtemp(path.join(tmpDir, prefix));
+    tempFilePath = path.join(tempDir, `edit${fileExtension}`);
+
+    // Write the initial content to the temporary file
+    await fs.writeFile(tempFilePath, initialContent);
+
+    console.log(chalk.blue(`Opening editor (${editor}) for file: ${tempFilePath}`));
+
+    // Special handling for VS Code to wait for the file to be closed
+    const editorArgs = editor.includes('code') ? ['--wait', tempFilePath] : [tempFilePath];
+    const editorCommand = editor.includes('code') ? editor.split(' ')[0] : editor;
+
+    // Launch the editor as a subprocess, inheriting stdio
+    await execa(editorCommand, editorArgs, {
+      stdio: 'inherit', // Allows interaction with the editor (e.g., vim)
+    });
+
+    // Read the potentially modified content back
+    const editedContent = await fs.readFile(tempFilePath, 'utf-8');
+
+    // Clean up the temporary file and directory
+    await fs.unlink(tempFilePath);
+    await fs.rmdir(tempDir);
+
+    return editedContent;
+  } catch (error) {
+    console.error(chalk.red('Error opening or reading from editor:'), error);
+    // Attempt cleanup even if there was an error
+    if (tempFilePath) {
+      try {
+        const tempDir = path.dirname(tempFilePath);
+        await fs.unlink(tempFilePath);
+        await fs.rmdir(tempDir);
+      } catch (cleanupError) {
+        console.error(chalk.yellow('Failed to cleanup temporary editor file:'), cleanupError);
+      }
+    }
+    throw error; // Re-throw the original error
+  }
+}
+</file>
+
+<file path="src/utils/fs.ts">
+import fs from 'fs/promises';
+import path from 'path';
+import chalk from 'chalk';
+
+// Function to read the PR template file
+export async function readPrTemplate(): Promise<string | null> {
+  const templatePath = path.join('.github', 'pull_request_template.md');
+  try {
+    const templateContent = await fs.readFile(templatePath, 'utf-8');
+    console.log(chalk.blue('Found and read PR template file.'));
+    return templateContent;
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(chalk.yellow('No PR template file found at .github/pull_request_template.md'));
+    } else {
+      console.error(
+        chalk.red('Error reading PR template file:'),
+        error instanceof Error ? error.message : error,
+      );
+    }
+    return null;
+  }
+}
+</file>
+
+<file path="src/utils/git.ts">
+import { execa, ExecaError } from 'execa';
+import chalk from 'chalk';
+
+// Placeholder for getting staged git diff
+export async function getStagedDiff(): Promise<string | null> {
+  console.log(chalk.blue('Getting staged diff...'));
+  try {
+    // Using --diff-filter=d to ignore deleted files in diff, which might cause issues
+    const { stdout } = await execa('git', ['diff', '--staged', '--diff-filter=d']);
+    return stdout.trim() || null;
+  } catch (error: unknown) {
+    // Handle cases where git is not installed, not in a repo, or no staged changes
+    if (error instanceof Error && (error as ExecaError).exitCode === 1 && (error as ExecaError).stdout === '' && (error as ExecaError).stderr === '') {
+      // No staged changes, not an error
+      console.log(chalk.yellow('No staged changes detected.'));
+      return null;
+    }
+    console.error(
+      chalk.red('Error getting staged diff:'),
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+// Placeholder for committing changes
+export async function commitChanges(message: string): Promise<boolean> {
+  console.log(chalk.blue(`Committing with message: "${message}"`));
+  try {
+    await execa('git', ['commit', '-m', message]);
+    console.log(chalk.green('Changes committed successfully.'));
+    return true;
+  } catch (error: unknown) {
+    console.error(
+      chalk.red('Error committing changes:'),
+      error instanceof Error ? error.message : error,
+    );
+    return false;
+  }
+}
+
+// Placeholder for getting diff from base branch
+export async function getDiffFromBase(baseBranch = 'main'): Promise<string | null> {
+  console.log(chalk.blue(`Getting diff from base branch (${baseBranch})...`));
+  try {
+    // Fetch the base branch quietly
+    await execa('git', ['fetch', 'origin', baseBranch, '-q']);
+    // Get diff ignoring deleted files
+    const { stdout } = await execa('git', [
+      'diff',
+      `origin/${baseBranch}...HEAD`,
+      '--diff-filter=d'
+    ]);
+    return stdout.trim() || null;
+  } catch (error: unknown) {
+    console.error(
+      chalk.red(`Error getting diff from base branch (${baseBranch}):`),
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+// Placeholder for getting current branch name
+export async function getCurrentBranch(): Promise<string | null> {
+  console.log(chalk.blue('Getting current branch name...'));
+  try {
+    const { stdout } = await execa('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+    return stdout.trim();
+  } catch (error: unknown) {
+    console.error(
+      chalk.red('Error getting current branch:'),
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+</file>
+
+<file path=".eslintrc.cjs">
+/* eslint-env node */
+module.exports = {
+  root: true,
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:import/recommended',
+    'plugin:import/typescript',
+    'prettier',
+  ],
+  parser: '@typescript-eslint/parser',
+  plugins: ['@typescript-eslint'],
+  settings: {
+    'import/resolver': {
+      typescript: true,
+      node: true,
+    },
+  },
+  rules: {
+    // Add specific rule overrides here if needed
+    'import/order': [
+      'warn',
+      {
+        'newlines-between': 'always',
+        alphabetize: {
+          order: 'asc',
+          caseInsensitive: true,
+        },
+      },
+    ],
+  },
+  ignorePatterns: ['dist/', 'node_modules/', 'build.mjs'],
+};
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Directory for instrumented libs generated by jscoverage/JSCover
+lib-cov
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Snowpack dependency directory (https://snowpack.dev/)
+web_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+# Comment in the public line in if your project uses Gatsby and not Next.js
+# https://nextjs.org/blog/next-9-1#public-directory-support
+# public
+
+# vuepress build output
+.vuepress/dist
+
+# vuepress v2.x temp and cache directory
+.temp
+.cache
+
+# vitepress build output
+**/.vitepress/dist
+
+# vitepress cache directory
+**/.vitepress/cache
+
+# Docusaurus cache and generated files
+.docusaurus
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+</file>
+
+<file path=".prettierrc.json">
+{
+  "semi": true,
+  "trailingComma": "all",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2,
+  "endOfLine": "lf"
+}
+</file>
+
+<file path="README.md">
+# ghp - Your AI GitHub Pal 🤖
+
+`ghp` is a command-line interface (CLI) tool designed to streamline your Git and GitHub workflow by leveraging the power of AI. It acts as a wrapper around common `git` and `gh` commands, automatically generating commit messages and pull request descriptions based on your code changes.
+
+Stop agonizing over the perfect commit message or PR description – let your AI pal handle the first draft!
+
+## Features ✨
+
+*   **AI-Powered Commit Messages:** Run `ghp commit` to automatically generate a conventional commit message based on your staged changes.
+*   **AI-Powered PR Descriptions:** Run `ghp pr new` to create a new draft pull request with a title and description generated from the difference between your current branch and the base branch. It can even use your existing `.github/pull_request_template.md`!
+*   **Interactive Confirmation:** Never commit or open a PR blindly. `ghp` always shows you the AI-generated content and asks for your confirmation before proceeding.
+*   **Seamless Integration:** Uses your existing `git` and `gh` CLI setup.
+*   **Configurable:** Options to specify base branches, control draft PR status, and open PRs in the browser.
+
+## Installation 📦
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/ghp.git # Replace with your repo URL
+cd ghp
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Link the CLI globally (optional but recommended for ease of use)
+npm link
+```
+
+Now you can run `ghp` from any directory.
+
+## Setup 🛠️
+
+1.  **OpenAI API Key:** `ghp` uses OpenAI (specifically, `gpt-4o-mini` by default) to generate text. You need an OpenAI API key.
+    *   Create a file named `.env` in the root of the `ghp` project directory.
+    *   Add your API key to the `.env` file:
+        ```
+        OPENAI_API_KEY=your_openai_api_key_here
+        ```
+    *   *Note:* The `.env` file is included in `.gitignore` to prevent accidental key exposure.
+
+2.  **GitHub CLI (`gh`):** The `ghp pr new` command relies on the official GitHub CLI (`gh`) being installed and authenticated.
+    *   Install `gh` by following the instructions [here](https://github.com/cli/cli#installation).
+    *   Authenticate with your GitHub account by running `gh auth login`.
+
+## Usage 🚀
+
+Make sure you are inside a Git repository directory.
+
+### Generating Commit Messages
+
+1.  Stage the changes you want to commit (`git add ...`).
+2.  Run the command:
+    ```bash
+    ghp commit
+    ```
+3.  `ghp` will show the staged diff (if any) and then display the AI-generated commit message.
+4.  You will be prompted to confirm (Y/n) if you want to use the generated message.
+5.  If confirmed, `ghp` will execute `git commit` with the message.
+
+### Creating Pull Requests
+
+1.  Ensure your current feature branch has been pushed to GitHub (`git push -u origin your-branch-name`).
+2.  Run the command:
+    ```bash
+    ghp pr new
+    ```
+3.  `ghp` will:
+    *   Determine your current branch and the base branch (defaults to `main`).
+    *   Fetch the diff between your branch and the base branch.
+    *   Look for a `.github/pull_request_template.md` file.
+    *   Generate a PR title and description using AI based on the diff and template (if found).
+    *   Display the generated title and description.
+4.  You will be prompted to confirm (Y/n) if you want to create the PR with this content.
+5.  If confirmed, `ghp` will execute `gh pr create --draft ...` (draft by default).
+
+#### `pr new` Options:
+
+*   `--base <branch>`: Specify a different base branch (e.g., `ghp pr new --base develop`).
+*   `--no-draft`: Create the PR as ready for review instead of a draft.
+*   `--web`: Open the newly created PR in your web browser.
+
+**Example:**
+
+```bash
+# Create a non-draft PR against the 'develop' branch and open it in the browser
+ghp pr new --base develop --no-draft --web
+```
+
+## How it Works 🤔
+
+1.  **Diffing:** Uses `git diff` commands via `execa` to get staged changes (`commit`) or changes relative to a base branch (`pr new`).
+2.  **AI Generation:** Sends the diff (and PR template content, if applicable) to the OpenAI API using the `openai` library, with prompts designed to generate conventional commits or PR content.
+3.  **Interaction:** Uses `inquirer` to display generated content and ask for user confirmation.
+4.  **Execution:** If confirmed, runs the corresponding `git commit` or `gh pr create` command using `execa`.
+
+## Contributing 🤝
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+## License 📄
+
+This project is licensed under the MIT License. See the `LICENSE` file for details (if one exists) or check `package.json`.
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "NodeNext",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "declaration": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+</file>
+
+<file path="src/commands/commit.ts">
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { getStagedDiff, commitChanges } from '../utils/git.js';
+import { generateCommitMessage } from '../utils/ai.js';
+import { openInEditor } from '../utils/editor.js';
+
+// Define flags expected by handleCommit
+interface CommitFlags {
+  editor?: boolean;
+}
+
+// Placeholder function for commit command logic
+export async function handleCommit(flags: CommitFlags) {
+  console.log(chalk.green('Starting commit process...'));
+
+  // 1. Get staged diff
+  const diff = await getStagedDiff();
+
+  if (diff === null) {
+    // Error occurred or no changes staged, handled in getStagedDiff
+    return;
+  }
+
+  if (!diff) {
+    console.log(chalk.yellow('No staged changes to commit.'));
+    return;
+  }
+
+  // 2. Generate commit message
+  let commitMessage = await generateCommitMessage(diff);
+
+  if (
+    !commitMessage ||
+    commitMessage === 'chore: Failed to generate commit message' ||
+    commitMessage === 'chore: OpenAI client not available'
+  ) {
+    console.error(chalk.red('Could not generate commit message. Aborting commit.'));
+    return;
+  }
+
+  // Open in editor if the flag is set
+  if (flags.editor) {
+    try {
+      console.log(chalk.blue('Opening generated message in editor...'));
+      const editedMessage = await openInEditor(commitMessage, '.gitcommit');
+      // Basic validation: check if the user deleted everything
+      if (!editedMessage.trim()) {
+        console.error(chalk.red('Edited message is empty. Aborting commit.'));
+        return;
+      }
+      commitMessage = editedMessage.trim(); // Use the edited message
+      console.log(chalk.green('Editor closed. Using edited message.'));
+    } catch (error) {
+      console.error(chalk.red('Failed to edit commit message:'), error);
+      return; // Abort if editor fails
+    }
+  }
+
+  console.log('\n------------------------------------');
+  console.log(chalk.bold('Commit Message:'));
+  console.log(chalk.yellow(commitMessage));
+  console.log('------------------------------------\n');
+
+  const { confirmCommit } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'confirmCommit',
+      message: 'Use this commit message?',
+      default: true,
+    },
+  ]);
+
+  if (!confirmCommit) {
+    console.log(chalk.yellow('Commit aborted by user.'));
+    return;
+  }
+
+  // 3. Execute git commit
+  const commitSuccess = await commitChanges(commitMessage);
+
+  if (commitSuccess) {
+    console.log(chalk.green.bold('Successfully committed changes!'));
+  } else {
+    console.error(chalk.red('Failed to commit changes.'));
+  }
+}
+</file>
+
+<file path="src/commands/pr.ts">
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { getDiffFromBase, getCurrentBranch } from '../utils/git.js';
+import { generatePrDescription } from '../utils/ai.js';
+import { readPrTemplate } from '../utils/fs.js';
+import { createGitHubPr } from '../utils/gh.js';
+import { openInEditor } from '../utils/editor.js';
+
+// Define expected flags, adding the editor flag
+interface PrNewFlags {
+  base?: string;
+  draft?: boolean;
+  web?: boolean;
+  editor?: boolean; // Added editor flag
+}
+
+export async function handlePrNew(flags: PrNewFlags) {
+  console.log(chalk.green('Starting PR creation process...'));
+
+  const baseBranch = flags.base || 'main';
+  const createDraft = flags.draft !== undefined ? flags.draft : true;
+  const openInWeb = flags.web || false;
+
+  const currentBranch = await getCurrentBranch();
+  if (!currentBranch) {
+    console.error(chalk.red('Could not determine current branch. Aborting.'));
+    return;
+  }
+  if (currentBranch === baseBranch) {
+    console.error(chalk.red(`Cannot create PR from branch "${currentBranch}" to itself.`));
+    return;
+  }
+  console.log(chalk.blue(`Current branch: ${currentBranch}`));
+  console.log(chalk.blue(`Base branch: ${baseBranch}`));
+
+  const diff = await getDiffFromBase(baseBranch);
+  if (diff === null) {
+    console.error(chalk.red('Could not get diff from base branch. Aborting.'));
+    return;
+  }
+  if (!diff) {
+    console.log(chalk.yellow('No changes detected between current branch and base branch.'));
+    return;
+  }
+
+  const template = await readPrTemplate();
+
+  let { title, body } = await generatePrDescription(diff, template);
+
+  if (
+    title === 'chore: Failed to generate PR title' ||
+    title === 'chore: OpenAI client not available'
+  ) {
+    console.error(chalk.red('Could not generate PR title/description. Aborting.'));
+    return;
+  }
+
+  // Open in editor if the flag is set
+  if (flags.editor) {
+    try {
+      console.log(chalk.blue('Opening generated PR title & description in editor...'));
+      // Combine title and body for editing, using a standard format
+      const initialEditorContent = `${title}\n\n${body}`;
+      const editedContent = await openInEditor(initialEditorContent, '.md'); // Use .md extension
+      
+      // Parse the edited content back into title and body
+      const lines = editedContent.split('\n');
+      const editedTitle = lines[0].trim();
+      const editedBody = lines.slice(1).join('\n').trim(); // Handle potential blank line after title
+
+      if (!editedTitle) {
+        console.error(chalk.red('Edited title is empty. Aborting PR creation.'));
+        return;
+      }
+      // Allow empty body, but use the edited versions
+      title = editedTitle;
+      body = editedBody;
+      console.log(chalk.green('Editor closed. Using edited title and description.'));
+    } catch (error) {
+      console.error(chalk.red('Failed to edit PR content:'), error);
+      return; // Abort if editor fails
+    }
+  }
+
+  console.log('\n------------------------------------');
+  console.log(chalk.bold('PR Title:')); // Changed label for clarity
+  console.log(chalk.yellow(title));
+  console.log('\n' + chalk.bold('PR Description:')); // Changed label for clarity
+  console.log(chalk.dim(body));
+  console.log('------------------------------------\n');
+
+  const { confirmPr } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'confirmPr',
+      message: 'Create PR with this title and description?',
+      default: true,
+    },
+  ]);
+
+  if (!confirmPr) {
+    console.log(chalk.yellow('PR creation aborted by user.'));
+    return;
+  }
+
+  const prSuccess = await createGitHubPr({
+    title,
+    body,
+    baseBranch,
+    draft: createDraft,
+    web: openInWeb,
+  });
+
+  if (prSuccess) {
+    console.log(chalk.green.bold('Successfully created GitHub PR!'));
+  } else {
+    console.error(chalk.red('Failed to create GitHub PR.'));
+  }
+}
+</file>
+
+<file path="src/utils/gh.ts">
+import { execa } from 'execa';
+import chalk from 'chalk';
+
+interface PrOptions {
+  title: string;
+  body: string;
+  baseBranch?: string; // Optional: Defaults to repo default
+  draft?: boolean;
+  web?: boolean; // Optional: Open in web browser
+}
+
+// Placeholder for creating a GitHub PR using gh cli
+export async function createGitHubPr(options: PrOptions): Promise<boolean> {
+  const { title, body, baseBranch, draft = true, web = false } = options;
+
+  console.log(chalk.blue('Creating GitHub PR...'));
+
+  const args = [
+    'pr',
+    'create',
+    '--title',
+    title,
+    '--body',
+    body,
+  ];
+
+  if (baseBranch) {
+    args.push('--base', baseBranch);
+  }
+
+  // Only add --draft if --web is not being used
+  if (draft && !web) {
+    args.push('--draft');
+  }
+
+  if (web) {
+    args.push('--web');
+  }
+
+  try {
+    // Run gh pr create
+    const { stdout, stderr } = await execa('gh', args);
+    console.log(chalk.green('Successfully created PR:'));
+    console.log(stdout); // Output the PR URL
+    if (stderr) {
+        console.warn(chalk.yellow('gh command stderr:'), stderr);
+    }
+    return true;
+  } catch (error: unknown) {
+    console.error(
+      chalk.red('Error creating GitHub PR:'),
+      error instanceof Error ? error.message : error,
+    );
+    // Optionally log the full error output
+    // if (error instanceof Error && (error as any).stderr) {
+    //   console.error(chalk.red((error as any).stderr));
+    // }
+    return false;
+  }
+}
+</file>
+
+<file path="src/cli.ts">
+#!/usr/bin/env node
+import dotenv from 'dotenv';
+
+// Load environment variables FIRST!
+// This ensures process.env is populated before other modules load.
+dotenv.config();
+
+import meow from 'meow';
+import chalk from 'chalk';
+import { handleCommit } from './commands/commit.js';
+import { handlePrNew } from './commands/pr.js';
+
+const cli = meow(
+  `
+  Usage
+    $ ghp <command> [options]
+
+  Commands
+    commit           Generate AI commit message for staged changes
+    pr new           Create a new draft PR with AI-generated description
+
+  Options
+    --help, -h       Show help
+    --version, -v    Show version
+
+  Commit Options:
+    -e, --editor     Open generated message in editor before committing
+
+  PR New Options:
+    --base <branch>  Specify base branch for 'pr new' (default: main)
+    --no-draft       Create the PR as ready for review instead of draft
+    --web            Open the created PR in the web browser
+    -e, --editor     Open generated title & body in editor before creating
+
+  Examples
+    $ ghp commit
+    $ ghp commit -e
+    $ ghp pr new
+    $ ghp pr new --base develop --no-draft --web
+    $ ghp pr new -e
+`,
+  {
+    importMeta: import.meta,
+    // Specify flag types for meow to parse correctly
+    flags: {
+      base: {
+        type: 'string',
+      },
+      draft: {
+        // meow automatically handles --no-draft to set draft=false
+        type: 'boolean',
+        default: true,
+      },
+      web: {
+        type: 'boolean',
+        default: false,
+      },
+      editor: {
+        type: 'boolean',
+        shortFlag: 'e',
+        default: false,
+      },
+    },
+  },
+);
+
+// Define a type for the parsed flags
+interface CliFlags {
+  base?: string;
+  draft?: boolean;
+  web?: boolean;
+  editor?: boolean;
+  [key: string]: unknown; // Allow other unknown flags potentially
+}
+
+async function run(cliInput: string[], cliFlags: CliFlags) {
+  const command = cliInput[0];
+
+  if (!command) {
+    cli.showHelp();
+    return;
+  }
+
+  try {
+    switch (command) {
+      case 'commit':
+        // Pass relevant flags if commit command needs them later
+        await handleCommit({ editor: cliFlags.editor });
+        break;
+
+      case 'pr':
+        if (cliInput[1] === 'new') {
+          // Pass the parsed flags to the handler
+          await handlePrNew({
+            base: cliFlags.base,
+            draft: cliFlags.draft,
+            web: cliFlags.web,
+            editor: cliFlags.editor,
+          });
+        } else {
+          console.error(chalk.red(`Unknown pr subcommand: ${cliInput[1]}`));
+          cli.showHelp(1);
+        }
+        break;
+
+      default:
+        console.error(chalk.red(`Unknown command: ${command}`));
+        cli.showHelp(1);
+        break;
+    }
+  } catch (error: unknown) {
+    console.error(chalk.red('\nAn unexpected error occurred:'));
+    if (error instanceof Error) {
+      console.error(chalk.red(error.message));
+      // Optionally log stack trace in dev mode
+      if (process.env.NODE_ENV === 'development' && error.stack) {
+        console.error(chalk.grey(error.stack));
+      }
+    } else {
+      console.error(chalk.red(String(error)));
+    }
+    process.exit(1);
+  }
+}
+
+run(cli.input, cli.flags as CliFlags);
+</file>
+
+<file path="build.mjs">
+import * as esbuild from 'esbuild';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const isWatch = process.argv.includes('--watch');
+const isDev = process.argv.includes('--dev') || isWatch;
+
+const sharedConfig = {
+  entryPoints: ['src/cli.ts'],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node18',
+  external: ['openai', 'dotenv', 'chalk', 'inquirer', 'execa', 'ora'],
+  charset: 'utf8',
+  sourcemap: isDev ? 'inline' : false,
+  minify: !isDev,
+  treeShaking: true,
+  define: {
+    'process.env.NODE_ENV': isDev ? '"development"' : '"production"'
+  },
+  logLevel: 'info',
+};
+
+async function build() {
+  try {
+    const context = await esbuild.context({
+      ...sharedConfig,
+      outfile: 'dist/cli.js',
+    });
+
+    if (isWatch) {
+      await context.watch();
+      console.log('Watching for changes...');
+    } else {
+      await context.rebuild();
+      await context.dispose();
+      console.log('Build complete.');
+    }
+  } catch (error) {
+    console.error('Build failed:', error);
+    process.exit(1);
+  }
+}
+
+build();
+</file>
+
+<file path="package.json">
+{
+  "name": "ghp",
+  "version": "0.1.0",
+  "license": "MIT",
+  "bin": {
+    "ghp": "dist/cli.js"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts --fix",
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs",
+    "build:link": "npm run build && npm link",
+    "start": "node dist/cli.js",
+    "dev": "node --enable-source-maps dist/cli.js",
+    "build:dev": "node build.mjs --dev",
+    "watch": "node build.mjs --watch"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "diff": "^5.2.0",
+    "dotenv": "^16.4.5",
+    "execa": "^8.0.1",
+    "inquirer": "^9.3.5",
+    "meow": "^13.2.0",
+    "openai": "^4.52.7",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/diff": "^5.2.0",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^18.19.42",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "esbuild": "^0.23.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.3.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/ghp.git" 
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/ghp/issues"
+  },
+  "homepage": "https://github.com/your-username/ghp#readme"
+}
+</file>
+
+<file path="src/utils/ai.ts">
+import OpenAI from 'openai';
+import chalk from 'chalk';
+import ora from 'ora';
+
+const apiKey = process.env.OPENAI_API_KEY;
+
+if (!apiKey) {
+  console.error(
+    chalk.red(
+      'Error: OPENAI_API_KEY environment variable is not set. Please add it to your .env file or environment.',
+    ),
+  );
+  // Optionally exit or handle this case differently depending on requirements
+  // For now, we allow proceeding but OpenAI calls will fail.
+}
+
+// Initialize OpenAI client only if API key exists
+const openai = apiKey ? new OpenAI({ apiKey }) : null;
+
+const MODEL = 'gpt-4o-mini'; // Or choose another model
+
+// Helper function to clean AI generated messages
+function cleanAiMessage(message: string): string {
+  // Remove leading/trailing ``` with optional language identifier and whitespace
+  return message.replace(/^```(?:\w+)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+}
+
+// Placeholder for generating commit message
+export async function generateCommitMessage(diff: string): Promise<string> {
+  if (!openai) {
+    console.error(chalk.red('OpenAI client not initialized. Check API key.'));
+    return 'chore: OpenAI client not available';
+  }
+  if (!diff) {
+    return 'feat: No changes detected'; // Default message if diff is empty
+  }
+
+  const spinner = ora('Generating commit message with AI...').start();
+
+  const prompt = `Generate a concise git commit message in the conventional commit format for the following diff:
+
+\`\`\`diff
+${diff}
+\`\`\`
+
+Commit message:`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: MODEL,
+      max_tokens: 50,
+      temperature: 0.7,
+    });
+
+    const rawMessage = completion.choices[0]?.message?.content?.trim();
+    if (!rawMessage) {
+      throw new Error('AI did not return a message.');
+    }
+    
+    // Clean the message before returning
+    const cleanedMessage = cleanAiMessage(rawMessage);
+    spinner.succeed('AI generated commit message!');
+
+    return cleanedMessage;
+  } catch (error) {
+    spinner.fail('Failed to generate commit message.');
+    console.error(
+      chalk.red('Error details:'),
+      error instanceof Error ? error.message : error,
+    );
+    // Fallback message
+    return 'chore: Failed to generate commit message';
+  }
+}
+
+// Placeholder for generating PR description
+export async function generatePrDescription(
+  diff: string,
+  template?: string | null,
+): Promise<{ title: string; body: string }> {
+  if (!openai) {
+    console.error(chalk.red('OpenAI client not initialized. Check API key.'));
+    return {
+      title: 'chore: OpenAI client not available',
+      body: 'OpenAI client not initialized. Check API key.',
+    };
+  }
+
+  const spinner = ora('Generating PR title and description with AI...').start();
+
+  const prompt = `Generate a Pull Request title and description for the following changes.
+
+${template ? `Use this PR template as a base:\n---TEMPLATE START---\n${template}\n---TEMPLATE END---\n\n` : ''}Apply the following diff to generate the content:
+\`\`\`diff
+${diff}
+\`\`\`
+
+Format the output as follows:
+PR Title: [Generated PR Title]
+PR Description:
+[Generated PR Description based on diff and template if provided]`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: MODEL,
+      max_tokens: 400, // Allow more tokens for PR descriptions
+      temperature: 0.7,
+    });
+
+    const rawContent = completion.choices[0]?.message?.content?.trim();
+    if (!rawContent) {
+      throw new Error('AI did not return content.');
+    }
+
+    // Extract title and body
+    // Updated regex to handle potential markdown bold formatting around labels
+    const titleMatch = rawContent.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
+    let title = titleMatch ? cleanAiMessage(titleMatch[1].trim()) : 'Generated PR'; // Default fallback title
+    let body = rawContent;
+
+    // Remove the matched title line from the body content
+    if (titleMatch) {
+      body = body.replace(titleMatch[0], '');
+    }
+    
+    // Remove the description label (potentially with markdown) and clean the body
+    body = cleanAiMessage(
+      body
+        .replace(/^\*?\*?PR Description:\*?\*?\n?/, '') 
+        .trim()
+    );
+
+    // If the title extraction failed initially, try to find it anywhere in the body
+    // (Handles cases where formatting might be slightly off)
+    if (title === 'Generated PR') {
+        const secondaryTitleMatch = body.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
+        if (secondaryTitleMatch) {
+            title = cleanAiMessage(secondaryTitleMatch[1].trim());
+            // Remove the title line from the body again if found this way
+            body = cleanAiMessage(body.replace(secondaryTitleMatch[0], '').trim());
+        }
+    }
+
+    spinner.succeed('AI generated PR title and description!');
+
+    return { title, body };
+  } catch (error) {
+    spinner.fail('Failed to generate PR description.');
+    console.error(
+      chalk.red('Error details:'),
+      error instanceof Error ? error.message : error,
+    );
+    return {
+      title: 'chore: Failed to generate PR title',
+      body: `Failed to generate PR description.\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``,
+    };
+  }
+}
+</file>
+
+</files>
