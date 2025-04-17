@@ -115,14 +115,33 @@ PR Description:
     }
 
     // Extract title and body
-    const titleMatch = rawContent.match(/^PR Title: (.*)/);
-    const title = titleMatch ? cleanAiMessage(titleMatch[1].trim()) : 'Generated PR';
-    const body = cleanAiMessage(
-      rawContent
-        .replace(/^PR Title: .*/, '')
-        .replace(/^PR Description:\n?/, '')
+    // Updated regex to handle potential markdown bold formatting around labels
+    const titleMatch = rawContent.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
+    let title = titleMatch ? cleanAiMessage(titleMatch[1].trim()) : 'Generated PR'; // Default fallback title
+    let body = rawContent;
+
+    // Remove the matched title line from the body content
+    if (titleMatch) {
+      body = body.replace(titleMatch[0], '');
+    }
+    
+    // Remove the description label (potentially with markdown) and clean the body
+    body = cleanAiMessage(
+      body
+        .replace(/^\*?\*?PR Description:\*?\*?\n?/, '') 
         .trim()
     );
+
+    // If the title extraction failed initially, try to find it anywhere in the body
+    // (Handles cases where formatting might be slightly off)
+    if (title === 'Generated PR') {
+        const secondaryTitleMatch = body.match(/^\*?\*?PR Title:\*?\*? (.*)/im);
+        if (secondaryTitleMatch) {
+            title = cleanAiMessage(secondaryTitleMatch[1].trim());
+            // Remove the title line from the body again if found this way
+            body = cleanAiMessage(body.replace(secondaryTitleMatch[0], '').trim());
+        }
+    }
 
     spinner.succeed('AI generated PR title and description!');
 
