@@ -110,9 +110,10 @@ export async function generateCommitMessage(diff: string): Promise<string> {
       spinner = ora(`Generating commit message with Gemini (${model})...`).start();
 
       const prompt = `Generate a concise git commit message in the conventional commit format for the following diff:\n\n\`\`\`diff\n${diff}\n\`\`\`\n\nCommit message:`;
-      // Use the initialized client instance
-      const result = await genAIInstance.models.generateContent({ model: model, contents: prompt });
-      generatedMessage = result.text ?? null;
+      // Reverting to original working API call pattern for commit
+      const resultCommit = await genAIInstance.models.generateContent({ model, contents: prompt });
+      // Correctly extract text using candidate path
+      generatedMessage = resultCommit.text ?? null
     } else {
       throw new Error(`Unsupported AI provider: ${provider}`);
     }
@@ -122,8 +123,13 @@ export async function generateCommitMessage(diff: string): Promise<string> {
     }
 
     const cleanedMessage = cleanAiMessage(generatedMessage);
+
+    // Extract only the first line (the commit header)
+    const firstLine = cleanedMessage.split('\n')[0].trim();
+
     spinner.succeed(`AI (${provider}) generated commit message!`);
-    return cleanedMessage;
+    // Return only the first line
+    return firstLine;
 
   } catch (error) {
     spinner.fail(`Failed to generate commit message using ${provider} (${model}).`);
@@ -184,11 +190,10 @@ export async function generatePrDescription(
       model = config.gemini_model || 'gemini-1.5-flash';
       spinner = ora(`Generating PR details with Gemini (${model})...`).start();
 
-      // Use the initialized client instance
-      const geminiModel = genAIInstance.getGenerativeModel({ model: model });
-      const result = await geminiModel.generateContent(fullPrompt);
-      const response = result.response;
-      const rawContent = response.text();
+      // Using the same API call pattern for PR description
+      const resultPr = await genAIInstance.models.generateContent({ model, contents: fullPrompt });
+      // Correctly extract text using candidate path
+      const rawContent = resultPr.response?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawContent) throw new Error('Gemini did not return content.');
       const parsed = parseGeminiResponseForPr(rawContent);
       title = parsed.title;
