@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +39,16 @@ async function build() {
     } else {
       await context.rebuild();
       await context.dispose();
+
+      // Make the CLI file executable
+      const cliPath = path.join(__dirname, 'dist', 'cli.js');
+      try {
+        fs.chmodSync(cliPath, '755');
+        console.log('Made CLI file executable');
+      } catch (error) {
+        console.error('Failed to make CLI file executable:', error);
+      }
+      
       console.log('Build complete.');
     }
   } catch (error) {
