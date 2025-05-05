@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/fernandobelotto/aigh/compare/v1.0.0...v1.1.0) (2025-05-05)
+
+
+### Features
+
+* update to include build ([2854bc9](https://github.com/fernandobelotto/aigh/commit/2854bc916fc8edf5f01eaf166f22fa2a3d1544df))
+
 # 1.0.0 (2025-04-17)
 
 
