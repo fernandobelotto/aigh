@@ -15,7 +15,7 @@ const sharedConfig = {
   platform: 'node',
   format: 'esm',
   target: 'node18',
-  external: ['openai', '@google/genai', 'dotenv', 'chalk', 'inquirer', 'execa', 'ora'],
+  external: ['ai', '@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', 'dotenv', 'chalk', 'inquirer', 'execa', 'ora'],
   charset: 'utf8',
   sourcemap: isDev ? 'inline' : false,
   minify: !isDev,

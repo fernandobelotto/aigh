@@ -9,7 +9,7 @@ import meow from 'meow';
 import chalk from 'chalk';
 import { handleCommit } from './commands/commit.js';
 import { handlePrNew } from './commands/pr.js';
-import { handleConfigGet, handleConfigSet } from './commands/config.js';
+import { handleConfigGet, handleConfigSet, handleConfigSetup } from './commands/config.js';
 
 const cli = meow(
   `
@@ -19,6 +19,7 @@ const cli = meow(
   Commands
     commit           Generate AI commit message for staged changes
     pr new           Create a new draft PR with AI-generated description
+    config setup     Interactive setup wizard for AI provider and model
     config get [key] Show current configuration (or specific key)
     config set <key> <value> Set a configuration key
 
@@ -36,21 +37,21 @@ const cli = meow(
     -e, --editor     Open generated title & body in editor before creating
 
   Config Keys:
-    ai_provider      (openai | gemini)
+    ai_provider      (openai | anthropic | google)
+    model            (e.g., gpt-5.2-pro, claude-opus-4-5, gemini-3-pro-preview)
     openai_api_key   (Your OpenAI API key)
-    openai_model     (e.g., gpt-4o-mini)
+    anthropic_api_key (Your Anthropic API key)
     google_api_key   (Your Google API key for Gemini)
-    gemini_model     (e.g., gemini-1.5-flash)
 
   Examples
     $ aigh commit
     $ aigh commit -e
     $ aigh pr new
     $ aigh pr new --base develop --no-draft --web -e
+    $ aigh config setup
     $ aigh config get
-    $ aigh config get ai_provider
-    $ aigh config set ai_provider gemini
-    $ aigh config set openai_api_key sk-...
+    $ aigh config set ai_provider anthropic
+    $ aigh config set model claude-opus-4-5
 `,
   {
     importMeta: import.meta,
@@ -104,7 +105,9 @@ async function run(cliInput: string[], cliFlags: CliFlags) {
         break;
 
       case 'config':
-        if (subCommand === 'get') {
+        if (subCommand === 'setup') {
+          await handleConfigSetup();
+        } else if (subCommand === 'get') {
           await handleConfigGet(args[0]);
         } else if (subCommand === 'set') {
           if (args.length < 2) {

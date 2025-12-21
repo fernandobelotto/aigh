@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Ref__ref_search_documentation",
+      "mcp__exa__get_code_context_exa",
+      "Bash(npm run typecheck:*)",
+      "mcp__Ref__ref_read_url"
+    ]
+  }
+}

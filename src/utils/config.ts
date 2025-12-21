@@ -5,11 +5,11 @@ import chalk from 'chalk';
 
 // Define the structure of the configuration
 export interface AIGHConfig {
-  ai_provider?: 'openai' | 'gemini'; // Specify the AI provider
+  ai_provider?: 'openai' | 'anthropic' | 'google'; // Specify the AI provider
+  model?: string; // Model name (e.g., 'gpt-4o', 'claude-sonnet-4-0', 'gemini-2.0-flash')
   openai_api_key?: string;
-  openai_model?: string;
-  google_api_key?: string; // API key for Google Gemini
-  gemini_model?: string; // Model name for Gemini (e.g., 'gemini-1.5-flash')
+  anthropic_api_key?: string;
+  google_api_key?: string;
   // Add other potential config keys here later
   [key: string]: unknown; // Allow other keys
 }
@@ -17,8 +17,7 @@ export interface AIGHConfig {
 // Default configuration values
 const DEFAULT_AIGH_CONFIG: AIGHConfig = {
   ai_provider: 'openai', // Default to OpenAI
-  openai_model: 'gpt-4o-mini',
-  gemini_model: 'gemini-1.5-flash', // Default Gemini model
+  // model defaults are handled per-provider in ai.ts
 };
 
 // Path to the configuration file
@@ -76,7 +75,8 @@ export async function loadConfig(): Promise<AIGHConfig> {
   // Merge user config with defaults, user config takes precedence
   // Also include API keys from env if not set in config
   const envOpenaiApiKey = process.env.OPENAI_API_KEY;
-  const envGoogleApiKey = process.env.GOOGLE_API_KEY; // Check for Google key in env
+  const envAnthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const envGoogleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
 
   const finalConfig = {
     ...DEFAULT_AIGH_CONFIG,
@@ -86,6 +86,9 @@ export async function loadConfig(): Promise<AIGHConfig> {
   // Prioritize config file key over env var, but use env var if config key missing
   if (!finalConfig.openai_api_key && envOpenaiApiKey) {
     finalConfig.openai_api_key = envOpenaiApiKey;
+  }
+  if (!finalConfig.anthropic_api_key && envAnthropicApiKey) {
+    finalConfig.anthropic_api_key = envAnthropicApiKey;
   }
   if (!finalConfig.google_api_key && envGoogleApiKey) {
     finalConfig.google_api_key = envGoogleApiKey;
@@ -105,7 +108,11 @@ export async function saveConfig(config: AIGHConfig): Promise<void> {
     if (configToSave.openai_api_key === process.env.OPENAI_API_KEY) {
       delete configToSave.openai_api_key;
     }
-    if (configToSave.google_api_key === process.env.GOOGLE_API_KEY) {
+    if (configToSave.anthropic_api_key === process.env.ANTHROPIC_API_KEY) {
+      delete configToSave.anthropic_api_key;
+    }
+    const envGoogleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (configToSave.google_api_key === envGoogleKey) {
       delete configToSave.google_api_key;
     }
 
