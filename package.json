@@ -15,6 +15,9 @@
     "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint src --ext ts --fix",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "build": "node build.mjs",
     "build:link": "npm run build && npm link",
     "start": "node dist/cli.js",
@@ -40,6 +43,8 @@
     "ora": "^8.0.1"
   },
   "devDependencies": {
+    "vitest": "^3.2.3",
+    "@vitest/coverage-v8": "^3.2.3",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^10.0.1",
